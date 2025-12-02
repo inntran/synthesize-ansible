@@ -1,0 +1,12 @@
+---
+# Ansible-lint configuration for synthesize-graphite
+
+# Skip variable naming rules - our variables are semantically named
+# by component (carbon_, grafana_, django_, etc.) rather than role prefix
+skip_list:
+  - var-naming[no-role-prefix]
+  - schema[meta]  # Skip meta schema validation for Debian trixie
+
+# Warn only on certain rules
+warn_list:
+  - experimental

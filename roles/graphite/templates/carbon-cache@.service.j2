@@ -1,0 +1,14 @@
+[Unit]
+Description=Carbon Cache instance %i
+After=network.target
+
+[Service]
+Type=forking
+User={{ carbon_user }}
+Group={{ carbon_group }}
+ExecStart=/usr/bin/carbon-cache --instance=%i --config={{ graphite_conf }}/carbon.conf --pidfile={{ graphite_storage }}/carbon-cache-%i.pid start
+ExecStop=/usr/bin/carbon-cache --instance=%i --config={{ graphite_conf }}/carbon.conf --pidfile={{ graphite_storage }}/carbon-cache-%i.pid stop
+PIDFile={{ graphite_storage }}/carbon-cache-%i.pid
+
+[Install]
+WantedBy=multi-user.target

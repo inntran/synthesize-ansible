@@ -1,0 +1,58 @@
+[cache]
+# Configure carbon directories for FHS-compliant Debian package
+STORAGE_DIR    = /var/lib/graphite/
+CONF_DIR       = /etc/carbon/
+LOG_DIR        = /var/log/carbon/
+PID_DIR        = /run/
+LOCAL_DATA_DIR = /var/lib/graphite/whisper/
+
+# Specify the database library
+DATABASE = whisper
+
+# Enable daily log rotation
+ENABLE_LOGROTATION = True
+
+# Specify the user to drop privileges to
+USER = {{ carbon_user }}
+
+# Limit the size of the cache to avoid swapping or becoming CPU bound
+MAX_CACHE_SIZE = inf
+
+# Limits the number of whisper update_many() calls per second
+MAX_UPDATES_PER_SECOND = 1000
+
+# Softly limits the number of whisper files that get created each minute
+MAX_CREATES_PER_MINUTE = 100
+
+# Set the minimum timestamp resolution (in seconds)
+MIN_TIMESTAMP_RESOLUTION = 1
+
+# Line receiver (plain text) settings
+LINE_RECEIVER_INTERFACE = 0.0.0.0
+LINE_RECEIVER_PORT = 2003
+
+# Pickle receiver (binary) settings
+PICKLE_RECEIVER_INTERFACE = 0.0.0.0
+PICKLE_RECEIVER_PORT = 2004
+USE_INSECURE_UNPICKLER = False
+
+# Cache query settings
+CACHE_QUERY_INTERFACE = 0.0.0.0
+CACHE_QUERY_PORT = 7002
+
+# Write strategy
+CACHE_WRITE_STRATEGY = max
+USE_FLOW_CONTROL = True
+
+# Whisper settings
+WHISPER_AUTOFLUSH = False
+WHISPER_FALLOCATE_CREATE = True
+
+# Logging settings
+LOG_CACHE_HITS = False
+LOG_CACHE_QUEUE_SORTS = True
+LOG_LISTENER_CONNECTIONS = True
+LOG_UPDATES = False
+
+# Disable tags (not working with self-signed SSL)
+ENABLE_TAGS = False

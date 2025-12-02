@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: apache_ssl
+  author: Yinchuan Song (Red Hat)
+  description: Apache web server with SSL configuration for Graphite and Grafana
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+  galaxy_tags:
+    - apache
+    - ssl
+    - webserver
+
+dependencies: []

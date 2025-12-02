@@ -1,0 +1,15 @@
+---
+# Default variables for debian_base role
+
+# Base build tools needed for compiling software
+base_build_packages:
+  - build-essential
+  - automake
+  - libtool
+  - git
+  - check
+
+# Python packages needed for Graphite ecosystem
+base_python_packages:
+  - python3-django
+  - fontconfig

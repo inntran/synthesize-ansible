@@ -1,0 +1,173 @@
+---
+# Main tasks for Graphite and Carbon installation on Debian 13
+
+- name: Check if Graphite is already installed
+  ansible.builtin.stat:
+    path: /etc/carbon/carbon.conf
+  register: graphite_install
+
+- name: Install Graphite packages from Debian repos
+  ansible.builtin.apt:
+    name: "{{ graphite_packages }}"
+    state: present
+  when: not graphite_install.stat.exists
+
+# Note: Debian package automatically creates:
+# - User/group: _graphite:_graphite
+# - Directories: /var/lib/graphite, /var/lib/graphite/whisper, /var/log/carbon
+# - Config dir: /etc/carbon
+# - Default configs: /etc/carbon/carbon.conf, /etc/carbon/storage-schemas.conf
+
+- name: Install Collectd for metrics collection
+  ansible.builtin.apt:
+    name: collectd
+    state: present
+  when: collectd_enabled
+
+- name: Include Statsite installation tasks
+  ansible.builtin.include_tasks: statsite.yml
+  when: statsite_enabled
+
+- name: Create web application log directory and fix ownership
+  ansible.builtin.file:
+    path: "{{ graphite_web_log_dir }}"
+    state: directory
+    owner: "{{ carbon_user }}"
+    group: "{{ carbon_group }}"
+    mode: '0755'
+    recurse: true
+
+- name: Configure Carbon
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - { src: 'carbon.conf.j2', dest: '{{ graphite_conf }}/carbon.conf' }
+    - { src: 'storage-schemas.conf.j2', dest: '{{ graphite_conf }}/storage-schemas.conf' }
+    - { src: 'storage-aggregation.conf.j2', dest: '{{ graphite_conf }}/storage-aggregation.conf' }
+  notify:
+    - Restart carbon-cache
+
+- name: Check if graphTemplates.conf needed
+  ansible.builtin.stat:
+    path: /etc/graphite/graphTemplates.conf
+  register: graphtemplates_check
+
+- name: Check if Django SECRET_KEY file exists
+  ansible.builtin.stat:
+    path: /etc/graphite/.secret_key
+  register: secret_key_file
+
+- name: Generate Django SECRET_KEY if it doesn't exist
+  ansible.builtin.shell:
+    cmd: python3 -c 'import random; import string; print("".join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(50)))'
+  register: generated_secret_key
+  when: not secret_key_file.stat.exists
+  changed_when: false
+
+- name: Save generated SECRET_KEY to file
+  ansible.builtin.copy:
+    content: "{{ generated_secret_key.stdout }}"
+    dest: /etc/graphite/.secret_key
+    owner: root
+    group: root
+    mode: '0600'
+  when: not secret_key_file.stat.exists
+
+- name: Read SECRET_KEY from file
+  ansible.builtin.slurp:
+    src: /etc/graphite/.secret_key
+  register: secret_key_content
+
+- name: Set SECRET_KEY fact
+  ansible.builtin.set_fact:
+    django_secret_key: "{{ secret_key_content.content | b64decode | trim }}"
+
+- name: Configure Graphite web application
+  ansible.builtin.template:
+    src: local_settings.py.j2
+    dest: /etc/graphite/local_settings.py
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Restart apache2
+
+- name: Check Django database exists
+  ansible.builtin.stat:
+    path: "{{ graphite_storage }}/graphite.db"
+  register: django_db
+
+- name: Run Django migrations
+  ansible.builtin.command:
+    cmd: django-admin migrate --noinput --settings=graphite.settings --run-syncdb
+    chdir: /usr/share/graphite-web
+  environment:
+    PYTHONPATH: /usr/share/graphite-web
+  when: not django_db.stat.exists
+  changed_when: true
+
+- name: Collect Django static files
+  ansible.builtin.command:
+    cmd: django-admin collectstatic --noinput --settings=graphite.settings
+    chdir: /usr/share/graphite-web
+  environment:
+    PYTHONPATH: /usr/share/graphite-web
+  when: not django_db.stat.exists
+  changed_when: true
+
+- name: Create Django superuser
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      echo "from django.contrib.auth import get_user_model; \
+      User = get_user_model(); \
+      User.objects.filter(username='{{ django_admin_user }}').exists() or \
+      User.objects.create_superuser('{{ django_admin_user }}', \
+      '{{ django_admin_email }}', '{{ django_admin_password }}')" | graphite-manage shell
+    chdir: /usr/share/graphite-web
+    executable: /bin/bash
+  when: not django_db.stat.exists
+  changed_when: true
+  no_log: true  # Don't log passwords
+
+- name: Set permissions on Django database
+  ansible.builtin.file:
+    path: "{{ graphite_storage }}/graphite.db"
+    owner: "{{ carbon_user }}"
+    group: "{{ carbon_group }}"
+    mode: '0644'
+    state: file
+  when: django_db.stat.exists or not django_db.stat.exists
+
+- name: Configure Collectd
+  ansible.builtin.template:
+    src: collectd.conf.j2
+    dest: /etc/collectd/collectd.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: collectd_enabled
+  notify:
+    - Restart collectd
+
+- name: Enable carbon-cache service
+  ansible.builtin.systemd:
+    name: carbon-cache
+    enabled: true
+    daemon_reload: true
+
+- name: Start carbon-cache service
+  ansible.builtin.systemd:
+    name: carbon-cache
+    state: started
+
+- name: Enable and start collectd
+  ansible.builtin.systemd:
+    name: collectd
+    enabled: true
+    state: started
+  when: collectd_enabled

@@ -1,0 +1,21 @@
+---
+# Handlers for Graphite role
+
+- name: Systemd daemon-reload
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart carbon-cache
+  ansible.builtin.systemd:
+    name: carbon-cache
+    state: restarted
+
+- name: Restart collectd
+  ansible.builtin.systemd:
+    name: collectd
+    state: restarted
+
+- name: Restart statsite
+  ansible.builtin.systemd:
+    name: statsite
+    state: restarted

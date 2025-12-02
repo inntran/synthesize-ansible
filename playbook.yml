@@ -1,0 +1,58 @@
+---
+# Playbook for installing Graphite monitoring stack on Debian 13
+#
+# Usage:
+#   ansible-playbook -i inventory playbook.yml
+#
+# For a local installation:
+#   ansible-playbook -i localhost, -c local playbook.yml
+
+- name: Install Graphite monitoring stack
+  hosts: all
+  become: true
+
+  roles:
+    # 1. Validate OS and install base packages
+    - role: debian_base
+
+    # 2. Install and configure Grafana using official collection
+    - role: grafana.grafana.grafana
+
+    # 3. Install and configure Graphite, Carbon, and Statsite
+    - role: graphite
+
+    # 4. Install and configure Apache with SSL
+    - role: apache_ssl
+
+  post_tasks:
+    - name: Copy Grafana dashboards
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ grafana_dashboards_dir }}/"
+        owner: grafana
+        group: grafana
+        mode: '0644'
+      loop:
+        - roles/graphite/files/GraphiteCarbonMetrics_obfuscurity.json
+      when: grafana_dashboards_dir is defined
+
+    - name: Display installation summary
+      ansible.builtin.debug:
+        msg:
+          - "Graphite installation complete!"
+          - ""
+          - "Web Interfaces (HTTPS only):"
+          - "  Landing page: https://{{ ansible_facts['fqdn'] }}/ or https://{{ ansible_facts['default_ipv4']['address'] }}/"
+          - "  Graphite Web UI: https://{{ ansible_facts['fqdn'] }}/graphite/ or https://{{ ansible_facts['default_ipv4']['address'] }}/graphite/"
+          - "  Grafana UI: https://{{ ansible_facts['fqdn'] }}/grafana/ or https://{{ ansible_facts['default_ipv4']['address'] }}/grafana/"
+          - ""
+          - "Default Credentials:"
+          - "  Graphite: admin / graphite_me_synthesize"
+          - "  Grafana: admin / admin"
+          - ""
+          - "Metric Receivers:"
+          - "  Carbon line receiver (plaintext): {{ ansible_facts['default_ipv4']['address'] }}:2003"
+          - "  Carbon pickle receiver (binary): {{ ansible_facts['default_ipv4']['address'] }}:2004"
+          - "  Statsite (StatsD protocol): {{ ansible_facts['default_ipv4']['address'] }}:8125 (TCP/UDP)"
+          - ""
+          - "Note: All web services are behind Apache with self-signed SSL certificate"

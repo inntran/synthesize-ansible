@@ -1,0 +1,63 @@
+---
+# Statsite installation tasks
+
+- name: Clone Statsite repository
+  ansible.builtin.git:
+    repo: "{{ statsite_repo }}"
+    dest: /usr/local/src/statsite
+    version: "{{ statsite_release }}"
+    update: false
+
+- name: Build Statsite
+  ansible.builtin.shell: |
+    ./autogen.sh
+    ./configure
+    make
+  args:
+    chdir: /usr/local/src/statsite
+    creates: /usr/local/src/statsite/statsite
+
+- name: Install Statsite binary
+  ansible.builtin.copy:
+    src: /usr/local/src/statsite/statsite
+    dest: /usr/local/sbin/statsite
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install Statsite graphite sink
+  ansible.builtin.copy:
+    src: /usr/local/src/statsite/sinks/graphite.py
+    dest: /usr/local/sbin/statsite-sink-graphite.py
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure Statsite
+  ansible.builtin.template:
+    src: statsite.conf.j2
+    dest: /etc/statsite.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Restart statsite
+
+- name: Install Statsite systemd service
+  ansible.builtin.copy:
+    src: statsite.service
+    dest: /etc/systemd/system/statsite.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Systemd daemon-reload
+
+- name: Enable and start Statsite
+  ansible.builtin.systemd:
+    name: statsite
+    enabled: true
+    state: started
+    daemon_reload: true

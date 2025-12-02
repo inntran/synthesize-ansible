@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: debian_base
+  author: Yinchuan Song (Red Hat)
+  description: Base Debian system validation and package installation
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+  galaxy_tags:
+    - debian
+    - system
+    - base
+
+dependencies: []

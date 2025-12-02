@@ -1,0 +1,19 @@
+# Example Ansible inventory file for Graphite installation
+#
+# Copy this file to 'inventory' and customize for your environment
+#
+# For a single server installation:
+# graphite ansible_host=192.168.1.100 ansible_user=root
+#
+# For a local installation (testing):
+# localhost ansible_connection=local
+
+[graphite_servers]
+# Add your Debian 13 servers here
+# Example:
+# graphite.example.com ansible_host=10.0.0.10 ansible_user=root
+# graphite-test ansible_host=192.168.1.50 ansible_user=admin ansible_become=yes
+
+[graphite_servers:vars]
+# Common variables for all Graphite servers
+# ansible_python_interpreter=/usr/bin/python3

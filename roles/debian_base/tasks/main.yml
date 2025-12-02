@@ -1,0 +1,25 @@
+---
+# Base Debian system validation and package installation
+
+- name: Verify Debian 13 (trixie)
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == "Debian"
+      - ansible_facts['distribution_major_version'] == "13" or ansible_facts['distribution_release'] == "trixie"
+    fail_msg: "This role only supports Debian 13 (trixie)"
+    success_msg: "Debian 13 detected, proceeding with installation"
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base build packages
+  ansible.builtin.apt:
+    name: "{{ base_build_packages }}"
+    state: present
+
+- name: Install Python packages
+  ansible.builtin.apt:
+    name: "{{ base_python_packages }}"
+    state: present

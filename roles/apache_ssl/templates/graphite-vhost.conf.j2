@@ -1,0 +1,73 @@
+<VirtualHost *:443>
+  SSLEngine on
+  SSLCertificateFile      {{ apache_ssl_cert }}
+  SSLCertificateKeyFile   {{ apache_ssl_key }}
+  ServerName graphite
+  CustomLog /var/log/apache2/graphite-access.log combined
+  ErrorLog /var/log/apache2/graphite-error.log
+
+  # Landing page at root
+  DocumentRoot /var/www/html
+
+  # Grafana reverse proxy - subpath must come before root path
+  ProxyPreserveHost On
+
+  # Proxy Grafana Live WebSocket connections
+  RewriteEngine On
+  RewriteCond %{HTTP:Upgrade} =websocket [NC]
+  RewriteRule /grafana/(.*)  ws://127.0.0.1:3000/grafana/$1 [P,L]
+
+  ProxyPass /grafana http://127.0.0.1:3000/grafana
+  ProxyPassReverse /grafana http://127.0.0.1:3000/grafana
+
+  # Debian package installs to /usr/share/graphite-web
+  # Run as _graphite user to match file ownership
+  WSGIDaemonProcess graphiteweb user={{ carbon_user }} group={{ carbon_group }} python-path=/usr/share/graphite-web:/usr/lib/python3/dist-packages processes=5 threads=5 display-name='%{GROUP}' inactivity-timeout=120
+  WSGIProcessGroup graphiteweb
+  WSGIApplicationGroup %{GLOBAL}
+  WSGIImportScript /usr/share/graphite-web/graphite.wsgi process-group=graphiteweb application-group=%{GLOBAL}
+
+  # WSGI debugging - logs to error_log
+  LogLevel info wsgi:debug
+
+  # Static files for Django admin - must come before WSGIScriptAlias
+  Alias /graphite/static /usr/share/graphite-web/static
+
+  # Graphite WSGI application
+  # Append /graphite to preserve the path for Django's URL_PREFIX
+  WSGIScriptAlias /graphite /usr/share/graphite-web/graphite.wsgi/graphite
+
+  # Allow access to landing page
+  <Directory /var/www/html>
+    Require all granted
+  </Directory>
+
+  <Directory /usr/share/graphite-web>
+    Require all granted
+  </Directory>
+
+  <Directory /usr/share/graphite-web/static>
+    Require all granted
+  </Directory>
+
+  <Location /server-status>
+    SetHandler server-status
+    Require all granted
+  </Location>
+
+  #<Location />
+  #  AuthName "Graphite Server"
+  #  AuthType Basic
+  #  AuthUserFile /etc/apache2/graphite.htpasswd
+  #  <Limit GET>
+  #    require valid-user
+  #  </Limit>
+  #</Location>
+</VirtualHost>
+<VirtualHost *:80>
+  RewriteEngine On
+  RewriteCond %{HTTPS} off
+  RewriteRule ^/?(.*) https://%{SERVER_NAME}/$1 [R,L]
+</VirtualHost>
+
+# vim: syntax=apache ts=4 sw=4 sts=4 sr noet

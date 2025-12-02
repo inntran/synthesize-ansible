@@ -1,0 +1,63 @@
+---
+# Apache and SSL configuration
+
+- name: Install Apache and modules
+  ansible.builtin.apt:
+    name: "{{ apache_packages }}"
+    state: present
+
+- name: Configure Apache virtual host
+  ansible.builtin.template:
+    src: graphite-vhost.conf.j2
+    dest: /etc/apache2/sites-available/graphite.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Restart apache2
+
+- name: Deploy landing page
+  ansible.builtin.copy:
+    src: index.html
+    dest: /var/www/html/index.html
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Disable default Apache site
+  ansible.builtin.command:
+    cmd: a2dissite 000-default
+  args:
+    removes: /etc/apache2/sites-enabled/000-default.conf
+  notify:
+    - Restart apache2
+
+- name: Enable Graphite Apache site
+  ansible.builtin.command:
+    cmd: a2ensite graphite
+  args:
+    creates: /etc/apache2/sites-enabled/graphite.conf
+  notify:
+    - Restart apache2
+
+- name: Enable Apache modules
+  ansible.builtin.command:
+    cmd: "a2enmod {{ item }}"
+  loop:
+    - ssl
+    - socache_shmcb
+    - rewrite
+    - proxy
+    - proxy_http
+    - proxy_wstunnel
+    - wsgi
+  register: apache_modules
+  changed_when: "'already enabled' not in apache_modules.stdout"
+  notify:
+    - Restart apache2
+
+- name: Enable and start Apache
+  ansible.builtin.systemd:
+    name: apache2
+    enabled: true
+    state: started

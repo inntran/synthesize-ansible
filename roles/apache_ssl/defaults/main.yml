@@ -1,0 +1,18 @@
+---
+# Default variables for apache_ssl role
+
+# Apache packages
+apache_packages:
+  - apache2
+  - libapache2-mod-wsgi-py3
+
+# SSL certificate configuration
+# These default to Debian's self-signed "snakeoil" certificates
+# Override these variables to use your own certificates
+apache_ssl_cert: /etc/ssl/certs/ssl-cert-snakeoil.pem
+apache_ssl_key: /etc/ssl/private/ssl-cert-snakeoil.key
+
+# Carbon user/group for WSGI daemon process
+# These should match the Graphite installation
+carbon_user: _graphite
+carbon_group: _graphite

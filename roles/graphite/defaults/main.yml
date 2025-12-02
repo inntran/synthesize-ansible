@@ -1,0 +1,39 @@
+---
+# Default variables for Graphite role
+
+# Graphite paths (Debian FHS-compliant)
+# Note: Debian packages do NOT use /opt/graphite
+# Instead they follow Filesystem Hierarchy Standard (FHS)
+graphite_home: /usr/share/graphite-web  # Web application files
+graphite_conf: /etc/carbon              # Carbon configuration
+graphite_storage: /var/lib/graphite     # Whisper data storage
+graphite_log_dir: /var/log/carbon       # Carbon logs
+graphite_web_log_dir: /var/log/graphite-web  # Web app logs
+graphite_run_dir: /run                  # PID files
+
+# Graphite packages (available in Debian 13)
+graphite_packages:
+  - graphite-web
+  - graphite-carbon
+  - python3-whisper
+
+# Carbon cache instances
+carbon_instances: 1
+
+# Carbon user (created by Debian package postinst)
+# Note: Debian package creates this automatically
+carbon_user: _graphite
+carbon_group: _graphite
+
+# Statsite configuration
+statsite_enabled: true
+statsite_release: master
+statsite_repo: https://github.com/armon/statsite.git
+
+# Django admin credentials
+django_admin_user: admin
+django_admin_password: graphite_me_synthesize
+django_admin_email: admin@localhost
+
+# Collectd metrics
+collectd_enabled: true

@@ -1,0 +1,7 @@
+---
+# Handlers for apache_ssl role
+
+- name: Restart apache2
+  ansible.builtin.systemd:
+    name: apache2
+    state: restarted
